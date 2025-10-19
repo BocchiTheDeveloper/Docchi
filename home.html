@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>To-Do App</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:"Poppins",sans-serif}
+body{background:#000;color:#fff;display:flex;justify-content:center}
+.app{width:100%;max-width:400px;min-height:100vh;padding:20px;position:relative;overflow:hidden}
+.page{display:none}
+.page.active{display:block}
+.center{text-align:center}
+.time{font-weight:bold;font-size:1.3em}
+.quote{margin-top:5px;font-style:italic;font-size:.9em}
+.btn-container{margin-top:20px;display:flex;justify-content:space-around}
+.btn{background:#fff;color:#000;padding:12px 20px;border-radius:20px;font-weight:bold;border:none;cursor:pointer;transition:.2s}
+.btn:hover{transform:scale(1.05)}
+.progress{display:flex;justify-content:space-around;align-items:center;margin-top:25px}
+.circle-container{position:relative;width:100px;height:100px}
+svg{transform:rotate(-90deg);width:100px;height:100px}
+.bg-circle{stroke:#fff;stroke-width:6;fill:none}
+.progress-circle{stroke:orange;stroke-width:6;fill:none;stroke-linecap:round;stroke-dasharray:283;stroke-dashoffset:283;transition:stroke-dashoffset .8s ease}
+.circle-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;font-size:.8em}
+.flame{width:60px;height:60px;border-radius:50%;cursor:pointer;transition:transform .2s}
+.flame:hover{transform:scale(1.1)}
+.report{text-align:center;margin-top:25px}
+.calendar-container{text-align:center;margin-top:10px}
+.calendar{width:260px;background:#fff;color:#000;border-radius:15px;margin:10px auto;padding:10px}
+.calendar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.day,.weekday{text-align:center;padding:5px 0;border-radius:8px}
+.weekday{font-weight:bold;background:#eee}
+.day.checked{background:#00b96b;color:#fff}
+.arrow-btn{background:#00b96b;width:45px;height:45px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:bold;font-size:1.3em;color:#fff;border:none}
+.task-page{text-align:center;position:relative}
+h2{margin-bottom:15px}
+.task-item{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.task-box{flex:1;background:#fff;color:#000;padding:12px 15px;border-radius:15px;transition:.3s;cursor:grab;margin-right:10px}
+.task-box.checked{background:linear-gradient(45deg,#ff7a00,#ff9c33);color:#fff;animation:bounce .4s ease}
+@keyframes bounce{0%{transform:scale(1)}40%{transform:scale(1.1)}100%{transform:scale(1)}}
+.check-btn,.delete-btn{border:none;border-radius:50%;width:35px;height:35px;cursor:pointer;font-size:1em;display:flex;align-items:center;justify-content:center}
+.check-btn{background:#00b96b;color:#fff;margin-right:5px}
+.delete-btn{background:crimson;color:#fff}
+.fab{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;color:#000;border:none;border-radius:50%;width:55px;height:55px;font-size:1.8em;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:5}
+.back-btn{margin-top:10px;background:#fff;color:#000;padding:8px 15px;border-radius:15px;font-weight:bold;border:none;cursor:pointer}
+.popup{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);display:flex;justify-content:center;align-items:center;z-index:10;visibility:hidden;opacity:0;transition:.3s}
+.popup.active{visibility:visible;opacity:1}
+.popup-box{background:#fff;color:#000;padding:20px;border-radius:15px;width:80%;max-width:300px;text-align:center}
+.popup-box input{width:90%;padding:8px;border-radius:10px;border:1px solid #ccc;margin-bottom:10px}
+.popup-buttons{display:flex;justify-content:space-around}
+.popup-buttons button{padding:8px 15px;border:none;border-radius:10px;font-weight:bold;cursor:pointer}
+.popup-buttons .add{background:#00b96b;color:#fff}
+.popup-buttons .cancel{background:#ccc}
+
+/* Fullscreen popup for image click */
+#flamePopup {
+  position: fixed;
+  width: 400px; height: 100%;
+  background: #222;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  z-index: 999;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#flamePopup.active {
+  visibility: visible;
+  opacity: 1;
+}
+#flamePopup button {
+  align-self: flex-end;
+  background: #00b96b;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+#flamePopup p {
+  margin-top: 30px;
+  text-align: justify;
+  line-height: 1.5;
+  font-size: 0.95em;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="home" class="page active center">
+    <div class="time" id="time"></div>
+    <div id="date"></div>
+    <div class="quote">“Never put off until tomorrow what can be done today.”</div>
+
+    <div class="btn-container">
+      <button class="btn" onclick="showPage('daily')">Daily Tasks</button>
+      <button class="btn" onclick="showPage('normal')">Normal Tasks</button>
+    </div>
+
+    <div class="progress">
+      <div class="circle-container">
+        <svg><circle class="bg-circle" cx="50" cy="50" r="45"></circle><circle class="progress-circle" id="dailyProgress" cx="50" cy="50" r="45"></circle></svg>
+        <div class="circle-label">Daily<br>Completed</div>
+      </div>
+
+      <!-- 🔥 replaced by image -->
+      <img style="width: 75px;" id="flameImg" class="flame" src="boccher.png" alt="Flame Icon" onclick="openFlamePopup()">
+
+      <div class="circle-container">
+        <svg><circle class="bg-circle" cx="50" cy="50" r="45"></circle><circle class="progress-circle" id="normalProgress" cx="50" cy="50" r="45"></circle></svg>
+        <div class="circle-label">Normal<br>Completed</div>
+      </div>
+    </div>
+
+    <div class="report">
+      <h3>Progress Report</h3>
+      <div class="calendar-container">
+        <div class="calendar-header">
+          <button class="arrow-btn" id="prevMonth">←</button>
+          <div id="monthLabel"></div>
+          <button class="arrow-btn" id="nextMonth">→</button>
+        </div>
+        <div class="calendar" id="calendar"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="daily" class="page task-page">
+    <h2>Daily Tasks</h2>
+    <div id="dailyList"></div>
+    <button class="fab" onclick="togglePopup('daily', true)">＋</button>
+    <button class="back-btn" onclick="showPage('home')">Back</button>
+  </div>
+
+  <div id="normal" class="page task-page">
+    <h2>Normal Tasks</h2>
+    <div id="normalList"></div>
+    <button class="fab" onclick="togglePopup('normal', true)">＋</button>
+    <button class="back-btn" onclick="showPage('home')">Back</button>
+  </div>
+</div>
+
+<!-- Flame Popup -->
+<div id="flamePopup">
+  <button onclick="closeFlamePopup()">Close ✕</button>
+  <p>
+    Hello, welcome to my app. As a college student living on my own, I often struggle with responsibilities. I procrastinate a lot and I sometimes wish I could do something about it, which is why I built this app. It's just a simple to-do list app, and I know there's tons of them online but it just feels better if I made one myself. Anyways, hope you find this useful!
+  </p>
+  <p>
+    -Eco
+  </p>
+</div>
+
+<!-- Popups for Adding Tasks -->
+<div id="popup-daily" class="popup">
+  <div class="popup-box">
+    <h3>Add Daily Task</h3>
+    <input type="text" id="dailyInput" placeholder="Task name">
+    <div class="popup-buttons">
+      <button class="add" onclick="confirmAddTask('daily')">Add</button>
+      <button class="cancel" onclick="togglePopup('daily', false)">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="popup-normal" class="popup">
+  <div class="popup-box">
+    <h3>Add Normal Task</h3>
+    <input type="text" id="normalInput" placeholder="Task name">
+    <input type="date" id="normalDate">
+    <div class="popup-buttons">
+      <button class="add" onclick="confirmAddTask('normal')">Add</button>
+      <button class="cancel" onclick="togglePopup('normal', false)">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function updateTime(){
+  const n=new Date();
+  document.getElementById("time").textContent=n.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById("date").textContent=n.toLocaleDateString();
+}
+setInterval(updateTime,1000);updateTime();
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  updateProgress();
+}
+
+const loadTasks=t=>JSON.parse(localStorage.getItem(t+"Tasks")||"[]");
+const saveTasks=(t,arr)=>localStorage.setItem(t+"Tasks",JSON.stringify(arr));
+
+function togglePopup(type,show){
+  const popup=document.getElementById(`popup-${type}`);
+  popup.classList.toggle("active",show);
+  if(show){
+    const input=document.getElementById(type+"Input");
+    input.focus();
+  }
+}
+
+function confirmAddTask(type){
+  const input=document.getElementById(type+"Input");
+  const val=input.value.trim();
+  if(!val)return;
+  const tasks=loadTasks(type);
+  const task={text:val,done:false};
+  if(type==="normal"){
+    const date=document.getElementById("normalDate").value;
+    task.due=date||null;
+  }
+  tasks.push(task);
+  saveTasks(type,tasks);
+  input.value="";
+  if(type==="normal")document.getElementById("normalDate").value="";
+  togglePopup(type,false);
+  if(type==="daily")renderDaily(); else renderNormal();
+}
+
+function renderDaily(){
+  const list=document.getElementById("dailyList");
+  list.innerHTML="";
+  const tasks=loadTasks("daily");
+  tasks.forEach((t,i)=>{
+    const container=document.createElement("div");
+    container.className="task-item";
+    const box=document.createElement("div");
+    box.className="task-box";
+    if(t.done)box.classList.add("checked");
+    box.textContent=t.text;
+    const check=document.createElement("button");
+    check.className="check-btn";check.innerHTML="✓";
+    check.onclick=e=>{
+      e.stopPropagation();t.done=!t.done;
+      saveTasks("daily",tasks);renderDaily();updateProgress();
+    };
+    const del=document.createElement("button");
+    del.className="delete-btn";del.innerHTML="✕";
+    del.onclick=e=>{
+      e.stopPropagation();tasks.splice(i,1);
+      saveTasks("daily",tasks);renderDaily();updateProgress();
+    };
+    container.appendChild(box);
+    container.appendChild(check);
+    container.appendChild(del);
+    list.appendChild(container);
+  });
+  updateProgress();
+}
+
+function renderNormal(){
+  const list=document.getElementById("normalList");
+  list.innerHTML="";
+  const tasks=loadTasks("normal");
+  tasks.forEach((t,i)=>{
+    const container=document.createElement("div");
+    container.className="task-item";
+    const box=document.createElement("div");
+    box.className="task-box";
+    if(t.done)box.classList.add("checked");
+    box.textContent=t.text+(t.due?` (Due: ${t.due})`:"");
+    const check=document.createElement("button");
+    check.className="check-btn";check.innerHTML="✓";
+    check.onclick=e=>{
+      e.stopPropagation();t.done=!t.done;
+      saveTasks("normal",tasks);renderNormal();updateProgress();
+    };
+    const del=document.createElement("button");
+    del.className="delete-btn";del.innerHTML="✕";
+    del.onclick=e=>{
+      e.stopPropagation();tasks.splice(i,1);
+      saveTasks("normal",tasks);renderNormal();updateProgress();
+    };
+    container.appendChild(box);
+    container.appendChild(check);
+    container.appendChild(del);
+    list.appendChild(container);
+  });
+  updateProgress();
+}
+
+function updateProgress(){
+  ["daily","normal"].forEach(type=>{
+    const tasks=loadTasks(type);
+    const done=tasks.filter(t=>t.done).length;
+    const percent=tasks.length?done/tasks.length:0;
+    const circle=document.getElementById(type+"Progress");
+    const r=45,c=2*Math.PI*r;
+    circle.style.strokeDashoffset=c*(1-percent);
+  });
+  updateCalendarCompletion();
+}
+
+const today=new Date().toDateString();
+const last=localStorage.getItem("lastDailyReset");
+if(last!==today){
+  localStorage.setItem("dailyTasks","[]");
+  localStorage.setItem("lastDailyReset",today);
+}
+
+let curM=new Date().getMonth(),curY=new Date().getFullYear();
+function generateCalendar(m,y){
+  const cal=document.getElementById("calendar");
+  cal.innerHTML="";
+  const lbl=document.getElementById("monthLabel");
+  const names=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  lbl.textContent=`${names[m]} ${y}`;
+  const days=new Date(y,m+1,0).getDate();
+  const first=new Date(y,m,1).getDay();
+  const comp=JSON.parse(localStorage.getItem("completedDays")||"{}");
+  const grid=document.createElement("div");grid.className="calendar-grid";
+  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d=>{
+    const e=document.createElement("div");e.className="weekday";e.textContent=d;grid.appendChild(e);
+  });
+  for(let i=0;i<first;i++)grid.appendChild(document.createElement("div"));
+  for(let d=1;d<=days;d++){
+    const cell=document.createElement("div");cell.className="day";cell.textContent=d;
+    const key=`${y}-${m+1}-${d}`;if(comp[key])cell.classList.add("checked");
+    grid.appendChild(cell);
+  }
+  cal.appendChild(grid);
+}
+function updateCalendarCompletion(){
+  const daily=loadTasks("daily");
+  const done=daily.filter(t=>t.done).length;
+  const allDone=daily.length>0&&done===daily.length;
+  const comp=JSON.parse(localStorage.getItem("completedDays")||"{}");
+  const key=`${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()}`;
+  if(allDone)comp[key]=true;
+  localStorage.setItem("completedDays",JSON.stringify(comp));
+  generateCalendar(curM,curY);
+}
+document.getElementById("prevMonth").onclick=()=>{curM--;if(curM<0){curM=11;curY--;}generateCalendar(curM,curY);};
+document.getElementById("nextMonth").onclick=()=>{curM++;if(curM>11){curM=0;curY++;}generateCalendar(curM,curY);};
+renderDaily();renderNormal();generateCalendar(curM,curY);
+
+// 🔥 Image popup logic
+function openFlamePopup(){document.getElementById("flamePopup").classList.add("active");}
+function closeFlamePopup(){document.getElementById("flamePopup").classList.remove("active");}
+</script>
+</body>
+</html>
