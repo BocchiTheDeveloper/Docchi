@@ -11,9 +11,13 @@
   outline: none;
 }
 
+@media (max-width: 400px) {
+  .app { padding-top: 30px; }
+}
+
 *{box-sizing:border-box;margin:0;padding:0;font-family:"Poppins",sans-serif}
 body{background:#000;color:#fff;display:flex;justify-content:center}
-.app{width:100%;max-width:400px;min-height:100vh;padding:20px;position:relative;overflow:hidden}
+.app{width:100%;max-width:400px;min-height:100vh;padding:20px;position:relative;overflow:hidden;margin-top: 30px;}
 .page{display:none}
 .page.active{display:block}
 .center{text-align:center}
@@ -39,7 +43,13 @@ svg{transform:rotate(-90deg);width:100px;height:100px}
 .weekday{font-weight:bold;background:#eee}
 .day.checked{background:#00b96b;color:#fff}
 .arrow-btn{background:#00b96b;width:45px;height:45px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:bold;font-size:1.3em;color:#fff;border:none}
-.task-page{text-align:center;position:relative}
+.task-page {
+  text-align: center;
+  position: relative;
+  max-height: calc(100vh - 60px); /* prevent overlap with FAB or buttons */
+  overflow-y: auto; /* allow vertical scrolling */
+  padding-bottom: 80px; /* give space below for FAB */
+}
 h2{margin-bottom:15px}
 .task-item{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .task-box{flex:1;background:#fff;color:#000;padding:12px 15px;border-radius:15px;transition:.3s;cursor:grab;margin-right:10px}
@@ -97,8 +107,6 @@ h2{margin-bottom:15px}
 </style>
 </head>
 <body>
-<br>
-<br>
 <div class="app">
   <div id="home" class="page active center">
     <div class="time" id="time"></div>
@@ -377,5 +385,3 @@ function closeFlamePopup(){document.getElementById("flamePopup").classList.remov
 </script>
 </body>
 </html>
-
-
