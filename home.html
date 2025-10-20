@@ -53,7 +53,6 @@ h2{margin-bottom:15px}
 .popup-buttons .add{background:#00b96b;color:#fff}
 .popup-buttons .cancel{background:#ccc}
 
-/* Fullscreen popup for image click */
 #flamePopup {
   position: fixed;
   width: 400px; height: 100%;
@@ -109,7 +108,6 @@ h2{margin-bottom:15px}
         <div class="circle-label">Daily<br>Completed</div>
       </div>
 
-      <!-- 🔥 replaced by image -->
       <img style="width: 75px;" id="flameImg" class="flame" src="boccher.png" alt="Flame Icon" onclick="openFlamePopup()">
 
       <div class="circle-container">
@@ -146,18 +144,25 @@ h2{margin-bottom:15px}
   </div>
 </div>
 
-<!-- Flame Popup -->
 <div id="flamePopup">
   <button onclick="closeFlamePopup()">Close ✕</button>
-  <p>
+  <p style="margin: 10px;">
     Hello, welcome to my app. As a college student living on my own, I often struggle with responsibilities. I procrastinate a lot and I sometimes wish I could do something about it, which is why I built this app. It's just a simple to-do list app, and I know there's tons of them online but it just feels better if I made one myself. Anyways, hope you find this useful!
   </p>
-  <p>
+  <p style="margin: 10px;">
     -Eco
+  </p>
+  <p style="margin: 10px;">
+    App guide:
+    <br>
+    Home Screen: This is where you can track your progress/completed tasks. Complete daily tasks every day to highlight a day in the progress calendar.
+    <br>
+    Daily Tasks: Daily tasks reset daily. You can choose to add, check off, or delete any tasks you've listed down.
+    <br>
+    Normal Tasks: Normal tasks don't reset daily. Instead, you have the option to set a due date for your tasks.
   </p>
 </div>
 
-<!-- Popups for Adding Tasks -->
 <div id="popup-daily" class="popup">
   <div class="popup-box">
     <h3>Add Daily Task</h3>
@@ -225,28 +230,69 @@ function confirmAddTask(type){
   if(type==="daily")renderDaily(); else renderNormal();
 }
 
-function renderDaily(){
-  const list=document.getElementById("dailyList");
+function moveTask(type, index, direction){
+  const tasks = loadTasks(type);
+  const newIndex = index + direction;
+  if(newIndex < 0 || newIndex >= tasks.length) return;
+  const temp = tasks[index];
+  tasks[index] = tasks[newIndex];
+  tasks[newIndex] = temp;
+  saveTasks(type, tasks);
+  if(type==="daily") renderDaily(); else renderNormal();
+}
+
+function renderTasks(type){
+  const list=document.getElementById(type+"List");
   list.innerHTML="";
-  const tasks=loadTasks("daily");
+  const tasks=loadTasks(type);
   tasks.forEach((t,i)=>{
     const container=document.createElement("div");
     container.className="task-item";
     const box=document.createElement("div");
     box.className="task-box";
     if(t.done)box.classList.add("checked");
-    box.textContent=t.text;
+    box.textContent = type === "normal" && t.due ? `${t.text} (Due: ${t.due})` : t.text;
+
+    box.onclick = () => {
+      const existing = container.querySelector(".move-buttons");
+      if(existing) existing.remove();
+      else {
+        const moveDiv = document.createElement("div");
+        moveDiv.className = "move-buttons";
+        moveDiv.style.display = "flex";
+        moveDiv.style.flexDirection = "column";
+        moveDiv.style.gap = "5px";
+        moveDiv.style.marginRight = "10px";
+
+        const upBtn = document.createElement("button");
+        upBtn.textContent = "↑";
+        upBtn.className = "check-btn";
+        upBtn.style.background = "#555";
+        upBtn.onclick = (e) => { e.stopPropagation(); moveTask(type, i, -1); };
+
+        const downBtn = document.createElement("button");
+        downBtn.textContent = "↓";
+        downBtn.className = "check-btn";
+        downBtn.style.background = "#555";
+        downBtn.onclick = (e) => { e.stopPropagation(); moveTask(type, i, 1); };
+
+        moveDiv.appendChild(upBtn);
+        moveDiv.appendChild(downBtn);
+        container.insertBefore(moveDiv, box);
+      }
+    };
+
     const check=document.createElement("button");
     check.className="check-btn";check.innerHTML="✓";
     check.onclick=e=>{
       e.stopPropagation();t.done=!t.done;
-      saveTasks("daily",tasks);renderDaily();updateProgress();
+      saveTasks(type,tasks);renderTasks(type);updateProgress();
     };
     const del=document.createElement("button");
     del.className="delete-btn";del.innerHTML="✕";
     del.onclick=e=>{
       e.stopPropagation();tasks.splice(i,1);
-      saveTasks("daily",tasks);renderDaily();updateProgress();
+      saveTasks(type,tasks);renderTasks(type);updateProgress();
     };
     container.appendChild(box);
     container.appendChild(check);
@@ -256,36 +302,8 @@ function renderDaily(){
   updateProgress();
 }
 
-function renderNormal(){
-  const list=document.getElementById("normalList");
-  list.innerHTML="";
-  const tasks=loadTasks("normal");
-  tasks.forEach((t,i)=>{
-    const container=document.createElement("div");
-    container.className="task-item";
-    const box=document.createElement("div");
-    box.className="task-box";
-    if(t.done)box.classList.add("checked");
-    box.textContent=t.text+(t.due?` (Due: ${t.due})`:"");
-    const check=document.createElement("button");
-    check.className="check-btn";check.innerHTML="✓";
-    check.onclick=e=>{
-      e.stopPropagation();t.done=!t.done;
-      saveTasks("normal",tasks);renderNormal();updateProgress();
-    };
-    const del=document.createElement("button");
-    del.className="delete-btn";del.innerHTML="✕";
-    del.onclick=e=>{
-      e.stopPropagation();tasks.splice(i,1);
-      saveTasks("normal",tasks);renderNormal();updateProgress();
-    };
-    container.appendChild(box);
-    container.appendChild(check);
-    container.appendChild(del);
-    list.appendChild(container);
-  });
-  updateProgress();
-}
+function renderDaily(){ renderTasks("daily"); }
+function renderNormal(){ renderTasks("normal"); }
 
 function updateProgress(){
   ["daily","normal"].forEach(type=>{
@@ -299,11 +317,13 @@ function updateProgress(){
   updateCalendarCompletion();
 }
 
-const today=new Date().toDateString();
+const todayKey=new Date().toDateString();
 const last=localStorage.getItem("lastDailyReset");
-if(last!==today){
-  localStorage.setItem("dailyTasks","[]");
-  localStorage.setItem("lastDailyReset",today);
+if(last!==todayKey){
+  const dailyTasks=loadTasks("daily");
+  dailyTasks.forEach(t=>t.done=false);
+  saveTasks("daily",dailyTasks);
+  localStorage.setItem("lastDailyReset",todayKey);
 }
 
 let curM=new Date().getMonth(),curY=new Date().getFullYear();
@@ -328,6 +348,7 @@ function generateCalendar(m,y){
   }
   cal.appendChild(grid);
 }
+
 function updateCalendarCompletion(){
   const daily=loadTasks("daily");
   const done=daily.filter(t=>t.done).length;
@@ -338,11 +359,11 @@ function updateCalendarCompletion(){
   localStorage.setItem("completedDays",JSON.stringify(comp));
   generateCalendar(curM,curY);
 }
+
 document.getElementById("prevMonth").onclick=()=>{curM--;if(curM<0){curM=11;curY--;}generateCalendar(curM,curY);};
 document.getElementById("nextMonth").onclick=()=>{curM++;if(curM>11){curM=0;curY++;}generateCalendar(curM,curY);};
 renderDaily();renderNormal();generateCalendar(curM,curY);
 
-// 🔥 Image popup logic
 function openFlamePopup(){document.getElementById("flamePopup").classList.add("active");}
 function closeFlamePopup(){document.getElementById("flamePopup").classList.remove("active");}
 </script>
